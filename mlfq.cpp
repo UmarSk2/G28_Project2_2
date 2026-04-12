@@ -104,7 +104,7 @@ int main() {
         time++;
     }
 
-    // Results Display [cite: 52, 60]
+    // Results Display
     cout << "\nGantt Chart:\n" << gantt << "|\n";
     cout << "\nID\tArr\tBus\tExit\tTAT\tWT\n";
     double sTAT = 0, sWT = 0;
