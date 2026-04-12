@@ -2,18 +2,21 @@
 #include <vector>
 #include <queue>
 #include <string>
+#include <climits>
 #include <iomanip>
 
 using namespace std;
 
+// Structure to hold all details of a process
 struct Process {
     string id;
     int arrivalTime;
     int burstTime;
     int remainingTime;
-    int currentQueue;
+    int currentQueue;     // Tracks which queue the process is currently in
+
     int completionTime;
-    int firstRunTime;
+    int firstRunTime;     // -1 = not yet run
 
     Process(string id, int arrival, int burst)
         : id(id), arrivalTime(arrival), burstTime(burst),
@@ -21,101 +24,204 @@ struct Process {
           completionTime(0), firstRunTime(-1) {}
 };
 
+
 int main() {
     int numQueues;
-    cout << "Enter the number of queues: ";
+
+    // 1. Accept Queue Configuration
+    cout << "Enter the number of queues: \n";
     cin >> numQueues;
+
+    if (numQueues <= 0) {
+        cout << "Error: number of queues must be > 0.\n";
+        return 1;
+    }
 
     vector<int> quantums(numQueues);
     for (int i = 0; i < numQueues; ++i) {
-        cout << "Enter quantum for Q" << i << " (-1 for FCFS): ";
+        if (i == numQueues - 1) {
+            cout << "Enter time quantum for Queue " << i << " (Enter -1 for FCFS): \n";
+        } else {
+            cout << "Enter time quantum for Queue " << i << ": \n";
+        }
         cin >> quantums[i];
+
+        bool isFCFS = (i == numQueues - 1) && (quantums[i] == -1);
+        if (!isFCFS && quantums[i] <= 0) {
+            cout << "Error: quantum must be > 0 (or -1 for FCFS on the last queue).\n";
+            --i;
+        }
     }
 
+    // 2. Accept Process Details
     int numProcesses;
-    cout << "Enter number of processes: ";
+    cout << "Enter the number of processes: \n";
     cin >> numProcesses;
+
+    if (numProcesses <= 0) {
+        cout << "Error: number of processes must be > 0.\n";
+        return 1;
+    }
 
     vector<Process> processes;
     for (int i = 0; i < numProcesses; ++i) {
-        string id; int a, b;
-        cout << "P" << i+1 << " (ID Arrival Burst): ";
-        cin >> id >> a >> b;
-        processes.push_back(Process(id, a, b));
+        string id;
+        int arrival, burst;
+        cout << "Enter ID, Arrival Time, and Burst Time for Process " << (i + 1) << " (separated by spaces): \n";
+        cin >> id >> arrival >> burst;
+
+        if (arrival < 0) {
+            cout << "Error: arrival time must be >= 0. Re-enter this process.\n";
+            --i; continue;
+        }
+        if (burst <= 0) {
+            cout << "Error: burst time must be > 0. Re-enter this process.\n";
+            --i; continue;
+        }
+        processes.push_back(Process(id, arrival, burst));
     }
 
+    // 3. Initialize MLFQ Data Structures
     vector<queue<Process*>> mlfq(numQueues);
-    string gantt = "";
-    int time = 0, completed = 0, timeInQuantum = 0;
-    Process* running = nullptr;
+    vector<pair<int, string>> executionSchedule;
 
-    while (completed < numProcesses) {
-        // Handle Arrivals
+    int time = 0;
+    int completedProcesses = 0;
+    Process* runningProcess = nullptr;
+    int timeInQuantum = 0;
+
+    int maxTime = 0;
+    for (auto& p : processes) maxTime += p.arrivalTime + p.burstTime;
+
+    cout << "\nStarting MLFQ Simulation...\n";
+
+    // 4. Main Event Loop
+    while (completedProcesses < numProcesses && time <= maxTime) {
+
+        // Step A: Handle New Arrivals
         for (auto& p : processes) {
-            if (p.arrivalTime == time) mlfq[0].push(&p);
+            if (p.arrivalTime == time) {
+                mlfq[0].push(&p);
+            }
         }
 
-        // Higher-priority Preemption
-        if (running != nullptr) {
-            for (int i = 0; i < running->currentQueue; ++i) {
+        // Step B (was C): Check for strict preemption by a higher-priority queue
+        if (runningProcess != nullptr) {
+            for (int i = 0; i < runningProcess->currentQueue; ++i) {
                 if (!mlfq[i].empty()) {
-                    mlfq[running->currentQueue].push(running);
-                    running = nullptr;
+                    // Preempt: push running process back to its current queue
+                    mlfq[runningProcess->currentQueue].push(runningProcess);
+                    runningProcess = nullptr;
                     break;
                 }
             }
         }
 
-        // Quantum/Completion Check
-        if (running != nullptr) {
-            if (quantums[running->currentQueue] != -1 && timeInQuantum == quantums[running->currentQueue]) {
-                if (running->currentQueue < numQueues - 1) running->currentQueue++;
-                mlfq[running->currentQueue].push(running);
-                running = nullptr;
+        // Step C (was B): Check current running process status
+        if (runningProcess != nullptr) {
+            if (runningProcess->remainingTime == 0) {
+                // Process finished
+                runningProcess->completionTime = time;
+                completedProcesses++;
+                runningProcess = nullptr;
+            }
+            else if (quantums[runningProcess->currentQueue] != -1 &&
+                     timeInQuantum == quantums[runningProcess->currentQueue]) {
+                // Time quantum exhausted: demote to lower-priority queue
+                if (runningProcess->currentQueue < numQueues - 1) {
+                    runningProcess->currentQueue++;
+                }
+                mlfq[runningProcess->currentQueue].push(runningProcess);
+                runningProcess = nullptr;
             }
         }
 
-        // Schedule
-        if (running == nullptr) {
+        // Step D: Schedule the next process
+        if (runningProcess == nullptr) {
             for (int i = 0; i < numQueues; ++i) {
                 if (!mlfq[i].empty()) {
-                    running = mlfq[i].front();
+                    runningProcess = mlfq[i].front();
                     mlfq[i].pop();
-                    timeInQuantum = 0;
+                    timeInQuantum = 0;  // Fresh quantum on every new scheduling
                     break;
                 }
             }
         }
 
-        // Execute tick
-        if (running != nullptr) {
-            if (running->firstRunTime == -1) running->firstRunTime = time;
-            gantt += "|" + running->id;
-            running->remainingTime--;
+        // Step E: Execute the process for 1 tick
+        if (runningProcess != nullptr) {
+            if (runningProcess->firstRunTime == -1) {
+                runningProcess->firstRunTime = time;
+            }
+            executionSchedule.push_back({time, runningProcess->id});
+            runningProcess->remainingTime--;
             timeInQuantum++;
-            if (running->remainingTime == 0) {
-                running->completionTime = time + 1;
-                completed++;
-                running = nullptr;
+
+            // Mark completion if this was the last tick
+            if (runningProcess->remainingTime == 0) {
+                runningProcess->completionTime = time + 1;
+                completedProcesses++;
+                runningProcess = nullptr;
             }
         } else {
-            gantt += "|IDLE";
+            executionSchedule.push_back({time, "Idle"});
         }
+
         time++;
     }
 
-    // Results Display
-    cout << "\nGantt Chart:\n" << gantt << "|\n";
-    cout << "\nID\tArr\tBus\tExit\tTAT\tWT\n";
-    double sTAT = 0, sWT = 0;
-    for (auto& p : processes) {
-        int tat = p.completionTime - p.arrivalTime;
-        int wt = tat - p.burstTime;
-        sTAT += tat; sWT += wt;
-        cout << p.id << "\t" << p.arrivalTime << "\t" << p.burstTime << "\t" 
-             << p.completionTime << "\t" << tat << "\t" << wt << endl;
+    if (completedProcesses < numProcesses) {
+        cout << "\nWarning: simulation halted at time " << time
+             << " (not all processes completed — check arrival times).\n";
     }
-    cout << fixed << setprecision(2) << "\nAvg TAT: " << sTAT/numProcesses << "\nAvg WT: " << sWT/numProcesses << endl;
+
+    // 5. Output: raw execution log
+    cout << "\nTime\tCPU Running\n";
+    cout << "-------------------\n";
+    for (const auto& entry : executionSchedule) {
+        cout << entry.first << "\t" << entry.second << "\n";
+    }
+
+    // Performance metrics
+    cout << "\nPerformance Metrics:\n";
+    cout << left
+         << setw(8)  << "ID"
+         << setw(12) << "Arrival"
+         << setw(10) << "Burst"
+         << setw(14) << "Completion"
+         << setw(14) << "Turnaround"
+         << setw(12) << "Waiting"
+         << setw(12) << "Response"
+         << "\n";
+    cout << string(82, '-') << "\n";
+
+    double sumTA = 0, sumWT = 0, sumRT = 0;
+    for (auto& p : processes) {
+        int ta = p.completionTime - p.arrivalTime;
+        int wt = ta - p.burstTime;
+        int rt = (p.firstRunTime != -1) ? (p.firstRunTime - p.arrivalTime) : -1;
+
+        sumTA += ta;
+        sumWT += wt;
+        if (rt >= 0) sumRT += rt;
+
+        cout << left
+             << setw(8)  << p.id
+             << setw(12) << p.arrivalTime
+             << setw(10) << p.burstTime
+             << setw(14) << p.completionTime
+             << setw(14) << ta
+             << setw(12) << wt
+             << setw(12) << (rt >= 0 ? to_string(rt) : "N/A")
+             << "\n";
+    }
+
+    int n = (int)processes.size();
+    cout << string(82, '-') << "\n";
+    cout << fixed << setprecision(2);
+    cout << "Average Turnaround Time : " << sumTA / n << "\n";
+    cout << "Average Waiting Time    : " << sumWT / n << "\n";
+    cout << "Average Response Time   : " << sumRT / n << "\n";
 
     return 0;
 }
