@@ -1,7 +1,7 @@
 # OS Lab Project 2: Advanced Scheduling Algorithms
 
 ## 1. Multilevel Feedback Queue (MLFQ)
-The Multilevel Feedback Queue (MLFQ) is a dynamic priority scheduling algorithm designed to balance the needs of interactive and CPU-intensive processes. It maintains multiple queues, each with a different time quantum. [cite_start]Processes start at the highest priority and are demoted to lower levels if they exceed their time slice, ensuring short-lived tasks finish quickly without being blocked by longer ones[cite: 54].
+The Multilevel Feedback Queue (MLFQ) is a dynamic priority scheduling algorithm designed to balance the needs of interactive and CPU-intensive processes. It maintains multiple queues, each with a different time quantum. Processes start at the highest priority and are demoted to lower levels if they exceed their time slice, ensuring short-lived tasks finish quickly without being blocked by longer ones.
 
 ### Sample Input
 ```text
@@ -10,10 +10,12 @@ Enter quantum for Q0: 2
 Enter quantum for Q1: 4
 Enter quantum for Q2: -1 (FCFS)
 
-Number of processes: 2
+Number of processes: 4
 Process Details (ID Arrival Burst):
 P1 0 10
-P2 1 3
+P2 1 4
+P3 2 7
+P4 4 2
 ```
 
 ### Output
@@ -41,12 +43,12 @@ EDF is a dynamic priority real-time scheduling algorithm. It assigns priority ba
 
 ### Sample Input
 ```text
-Enter number of processors: 2
+Enter number of processors: 1
 Enter number of processes: 3
 Enter details (ID Arrival Burst Deadline):
-P1 0 5 10
-P2 0 3 5
-P3 1 2 4
+P1 0 3 10
+P2 0 6 12
+P3 1 12 5
 ```
 
 ### Output
@@ -57,11 +59,7 @@ RMS is a static-priority real-time scheduling algorithm. Priorities are assigned
 
 ### Sample Input
 ```text
-Enter number of processors: 2
-Enter number of processes: 2
-Enter details (ID Arrival Burst Period):
-P1 0 3 10
-P2 0 2 5
+input here
 ```
 
 ### Output
