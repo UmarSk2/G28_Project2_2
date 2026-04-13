@@ -52,15 +52,21 @@ P3 1 12 5
 ```
 
 ### Output
-![edf output](output_edf.png)
+![edf output](output_edf.jpeg)
 
 ## 4. Rate-Monotonic Scheduling (RMS)
+
 RMS is a static-priority real-time scheduling algorithm. Priorities are assigned based on the "rate" (frequency) of a task: processes with the shortest periods or cycles are given the highest priority. It is preemptive and typically used for periodic tasks. Unlike EDF, RMS uses fixed priorities that do not change during execution.
 
 ### Sample Input
+
 ```text
-input here
+Enter number of processes: 3
+Enter Process_ID Arrival_Time Burst_Time Period/Deadline:
+P1 0 3 10
+P2 0 2 5
+P3 0 1 4
 ```
 
 ### Output
-![rms output](output_rms.png)
+![rms output](output_rms.jpeg)
