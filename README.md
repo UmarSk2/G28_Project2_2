@@ -1,5 +1,14 @@
 # OS Lab Project 2: Advanced Scheduling Algorithms
 
+### Team Details
+
+| S.No | Member Name | Admission Number | Contribution |
+| :--- | :--- | :--- | :--- |
+| 1 | Mohammad Umar Shaikh Mohd Abdul Sattar | 21JE0561 | Implemented Lottery Scheduling Algorithm |
+| 2 | Raja Babu | 21JE0740 | Implemented Rate Monotonic Scheduling (RMS) Algorithm |
+| 3 | Tak Abhishek Anil | 21JE0979 | Implemented Earliest Deadline First (EDF) Scheduling Algorithm |
+| 4 | Udit Singh Chauhan | 21JE1002 | Implemented Multilevel Feedback Queue (MLFQ) Scheduling Algorithm and overall project integration |
+
 ## 1. Multilevel Feedback Queue (MLFQ)
 The Multilevel Feedback Queue (MLFQ) is a dynamic priority scheduling algorithm designed to balance the needs of interactive and CPU-intensive processes. It maintains multiple queues, each with a different time quantum. Processes start at the highest priority and are demoted to lower levels if they exceed their time slice, ensuring short-lived tasks finish quickly without being blocked by longer ones.
 
