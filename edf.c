@@ -6,19 +6,16 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Structure to represent a process
+// Structure to represent a process (I/O fields removed)
 typedef struct {
     int id;
     int execution_time;
-    int io_time;
     int deadline;
     int arrival_time;
     int remaining_time;
-    int remaining_io;
     int start_time;
     int completion_time;
     bool is_completed;
-    bool in_io;
 } Process;
 
 // Global simulation variables
@@ -29,9 +26,9 @@ int current_time = 0;
 bool simulation_active = true;
 int num_processors = 2;
 
-// Log to store execution history: cpu_log[cpu_index][time_tick]
+// Log to store execution history
 int **cpu_log; 
-int log_capacity = 1000; // Initial capacity for the timeline log
+int log_capacity = 1000;
 int current_log_size = 0;
 
 void handle_signal(int sig) {
@@ -40,7 +37,6 @@ void handle_signal(int sig) {
     }
 }
 
-// Thread function for the scheduler
 void* scheduler_tick(void* arg) {
     while (simulation_active) {
         pthread_mutex_lock(&lock_mutex);
@@ -59,26 +55,16 @@ void* scheduler_tick(void* arg) {
             break;
         }
 
-        // Handle I/O decrement
-        for (int i = 0; i < num_processes; i++) {
-            if (processes[i].in_io) {
-                processes[i].remaining_io--;
-                if (processes[i].remaining_io <= 0) {
-                    processes[i].in_io = false;
-                }
-            }
-        }
-
-        // Find available processes
+        // Find available processes (only checking completion and arrival)
         int *available = malloc(num_processes * sizeof(int));
         int avail_count = 0;
         for (int i = 0; i < num_processes; i++) {
-            if (!processes[i].is_completed && processes[i].arrival_time <= current_time && !processes[i].in_io) {
+            if (!processes[i].is_completed && processes[i].arrival_time <= current_time) {
                 available[avail_count++] = i;
             }
         }
 
-        // Simple Selection Sort for EDF (Earliest Deadline First)
+        // EDF Sorting (Earliest Deadline First)
         for (int i = 0; i < avail_count - 1; i++) {
             for (int j = i + 1; j < avail_count; j++) {
                 if (processes[available[i]].deadline > processes[available[j]].deadline) {
@@ -100,12 +86,7 @@ void* scheduler_tick(void* arg) {
                 processes[p_idx].remaining_time--;
                 cpu_log[cpu][current_time] = processes[p_idx].id;
                 
-                // Simulate I/O burst halfway through
-                if (processes[p_idx].remaining_time > 0 && 
-                    processes[p_idx].remaining_time == processes[p_idx].execution_time / 2 && 
-                    processes[p_idx].io_time > 0) {
-                    processes[p_idx].in_io = true;
-                } else if (processes[p_idx].remaining_time == 0) {
+                if (processes[p_idx].remaining_time == 0) {
                     processes[p_idx].completion_time = current_time + 1;
                     processes[p_idx].is_completed = true;
                 }
@@ -117,7 +98,6 @@ void* scheduler_tick(void* arg) {
         current_time++;
         current_log_size = current_time;
         
-        // Dynamic realloc if log exceeds capacity
         if (current_time >= log_capacity - 1) {
             log_capacity *= 2;
             for(int i = 0; i < num_processors; i++) {
@@ -158,21 +138,19 @@ int main() {
 
         processes[i].id = id;
         processes[i].execution_time = bt;
-        processes[i].io_time = 0;
         processes[i].deadline = dl;
         processes[i].arrival_time = at;
         processes[i].remaining_time = bt;
-        processes[i].remaining_io = 0;
         processes[i].start_time = -1;
         processes[i].completion_time = 0;
         processes[i].is_completed = false;
-        processes[i].in_io = false;
     }
 
     pthread_t sched_thread;
     pthread_create(&sched_thread, NULL, scheduler_tick, NULL);
     pthread_join(sched_thread, NULL);
 
+    // Results Display
     printf("\nP\tAT\tBT\tDL\tCT\tTAT\tWT\tMiss\n");
     float total_tat = 0, total_wt = 0;
     int misses = 0;
@@ -208,7 +186,6 @@ int main() {
         printf("\n\n");
     }
 
-    // Cleanup
     for(int i = 0; i < num_processors; i++) free(cpu_log[i]);
     free(cpu_log);
     free(processes);
